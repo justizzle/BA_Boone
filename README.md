@@ -1,4 +1,4 @@
-Usage
+*Usage* \n
 DDC module runs the ddc fasttext, Driver module runs the topic transformers.
 Command-Line Arguments: <inputFolderPath> <outputFolderPath> <numThreads>
 inputFolderPath: Path to the directory containing .txt files to process.
