@@ -62,7 +62,7 @@ public class DDC {
                     .build());
 
             composer.add(
-                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-spacy-de_core_news_sm:latest")
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-spacy-en_core_web_lg:latest")
                             .withImageFetching()
                             .withScale(numThreads)
                             .withSourceView("InitialView")
