@@ -1,3 +1,4 @@
+import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence;
 import org.apache.uima.collection.CollectionReaderDescription;
 import org.dkpro.core.io.xmi.XmiWriter;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.DUUIComposer;
@@ -9,6 +10,8 @@ import org.texttechnologylab.DockerUnifiedUIMAInterface.io.DUUIAsynchronousProce
 import org.texttechnologylab.DockerUnifiedUIMAInterface.io.DUUICollectionReader;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.io.reader.DUUIFileReader;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.lua.DUUILuaContext;
+import org.texttechnologylab.DockerUnifiedUIMAInterface.segmentation.DUUISegmentationStrategyByAnnotationFast;
+import org.texttechnologylab.DockerUnifiedUIMAInterface.tools.SetLanguage;
 import org.xml.sax.SAXException;
 
 import java.io.*;
@@ -17,14 +20,14 @@ import java.net.URISyntaxException;
 import static org.apache.uima.fit.factory.AnalysisEngineFactory.createEngineDescription;
 
 public class TopicTransformer {
-    private static final String[] MODELS = {
-            "docker.texttechnologylab.org/duui-transformers-topic-manifestoberta-xlm-roberta:latest",
-            "docker.texttechnologylab.org/duui-transformers-topic-multilingual-iptc-media-topic-classifier:latest",
-            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-english-cap-v3:latest",
-            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-party-cap-v3:latest",
-            "docker.texttechnologylab.org/duui-transformers-topic-cardiffnlp-roberta-large-tweet-topic-single-all:latest",
-            "docker.texttechnologylab.org/duui-transformers-topic-tweet-topic-large-multilingual:latest"
-    };
+//    private static final String[] MODELS = {
+//            "docker.texttechnologylab.org/duui-transformers-topic-manifestoberta-xlm-roberta:latest",
+//            "docker.texttechnologylab.org/duui-transformers-topic-multilingual-iptc-media-topic-classifier:latest",
+//            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-english-cap-v3:latest",
+//            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-party-cap-v3:latest",
+//            "docker.texttechnologylab.org/duui-transformers-topic-cardiffnlp-roberta-large-tweet-topic-single-all:latest",
+//            "docker.texttechnologylab.org/duui-transformers-topic-tweet-topic-large-multilingual:latest"
+//    };
 
     //private String modelUrl = "http://127.0.0.1:1001"; // Model server URL
 
@@ -38,13 +41,12 @@ public class TopicTransformer {
         String outputFolderPath = args[1];
         int numThreads = Integer.parseInt(args[2]);
 
-        for(String model : MODELS) {
-            run(inputFolderPath, outputFolderPath, model, numThreads);
-        }
+        run(inputFolderPath, outputFolderPath, numThreads);
+
 
     }
 
-    public static void run(String inputFolder, String outputFolder, String model, int numThreads)  {
+    public static void run(String inputFolder, String outputFolder, int numThreads)  {
         DUUICollectionReader reader = new DUUIFileReader(inputFolder, ".txt");
         DUUIAsynchronousProcessor pProcessor = new DUUIAsynchronousProcessor(reader);
         new File(outputFolder).mkdir();
@@ -59,6 +61,10 @@ public class TopicTransformer {
             DUUISwarmDriver swarm_driver = new DUUISwarmDriver();
             DUUIUIMADriver uima_driver = new DUUIUIMADriver().withDebug(true);
 
+            composer.add(new DUUIUIMADriver.Component(
+                    createEngineDescription(
+                            SetLanguage.class, SetLanguage.PARAM_LANGUAGE, "en")).build());
+
             composer.addDriver(docker_driver, uima_driver, swarm_driver);
 
 //            composer.add(
@@ -67,12 +73,68 @@ public class TopicTransformer {
 //                            .withParameter("selection", "text")
 //            );
 
+            DUUISegmentationStrategyByAnnotationFast segmentationStrategy = new DUUISegmentationStrategyByAnnotationFast();
+            segmentationStrategy.withSegmentationClass(Sentence.class);
+            segmentationStrategy.withLength(500000);
+
             composer.add(
-                    new DUUIDockerDriver.Component(model)
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-manifestoberta-xlm-roberta:latest")
                             //.withParameter("model_name", model)
                             .withParameter("selection", "text")
-                            .withSourceView("input_" + model)
-                            .withTargetView("output_" + model).build()
+                            .withSourceView("InitialView")
+                            .withSegmentationStrategy(segmentationStrategy)
+                            .withScale(numThreads)
+                            .withTargetView("docker.texttechnologylab.org/duui-transformers-topic-manifestoberta-xlm-roberta:latest").build()
+            );
+
+            composer.add(
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-multilingual-iptc-media-topic-classifier:latest")
+                            //.withParameter("model_name", model)
+                            .withParameter("selection", "text")
+                            .withSourceView("InitialView")
+                            .withSegmentationStrategy(segmentationStrategy)
+                            .withScale(numThreads)
+                            .withTargetView("docker.texttechnologylab.org/duui-transformers-topic-multilingual-iptc-media-topic-classifier:latest").build()
+            );
+
+            composer.add(
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-english-cap-v3:latest")
+                            //.withParameter("model_name", model)
+                            .withParameter("selection", "text")
+                            .withSourceView("InitialView")
+                            .withSegmentationStrategy(segmentationStrategy)
+                            .withScale(numThreads)
+                            .withTargetView("docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-english-cap-v3:latest").build()
+            );
+
+            composer.add(
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-party-cap-v3:latest")
+                            //.withParameter("model_name", model)
+                            .withParameter("selection", "text")
+                            .withSourceView("InitialView")
+                            .withSegmentationStrategy(segmentationStrategy)
+                            .withScale(numThreads)
+                            .withTargetView("docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-party-cap-v3:latest").build()
+            );
+
+            composer.add(
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-cardiffnlp-roberta-large-tweet-topic-single-all:latest")
+                            //.withParameter("model_name", model)
+                            .withParameter("selection", "text")
+                            .withSourceView("InitialView")
+                            .withSegmentationStrategy(segmentationStrategy)
+                            .withScale(numThreads)
+                            .withTargetView("docker.texttechnologylab.org/duui-transformers-topic-cardiffnlp-roberta-large-tweet-topic-single-all:latest").build()
+            );
+
+            composer.add(
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-tweet-topic-large-multilingual:latest")
+                            //.withParameter("model_name", model)
+                            .withParameter("selection", "text")
+                            .withSourceView("InitialView")
+                            .withSegmentationStrategy(segmentationStrategy)
+                            .withScale(numThreads)
+                            .withTargetView("docker.texttechnologylab.org/duui-transformers-topic-tweet-topic-large-multilingual:latest").build()
             );
 
             composer.add(new DUUIUIMADriver.Component(
