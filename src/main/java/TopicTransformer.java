@@ -60,7 +60,7 @@ public class TopicTransformer {
             composer.addDriver(docker_driver, uima_driver, swarm_driver);
 
             composer.add(
-                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-spacy-de_core_news_sm:latest")
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-spacy-en_core_web_lg:latest")
                             .withImageFetching()
                             .withScale(numThreads)
                             .withSourceView("InitialView")
