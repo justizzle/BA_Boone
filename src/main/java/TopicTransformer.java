@@ -1,15 +1,13 @@
-
-import de.tudarmstadt.ukp.dkpro.core.io.text.TextReader;
-import org.apache.uima.UIMAException;
 import org.apache.uima.collection.CollectionReaderDescription;
-import org.apache.uima.fit.factory.JCasFactory;
-import org.apache.uima.fit.util.JCasUtil;
-import org.apache.uima.jcas.JCas;
 import org.dkpro.core.io.xmi.XmiWriter;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.DUUIComposer;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.driver.DUUIDockerDriver;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.driver.DUUIRemoteDriver;
+import org.texttechnologylab.DockerUnifiedUIMAInterface.driver.DUUISwarmDriver;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.driver.DUUIUIMADriver;
+import org.texttechnologylab.DockerUnifiedUIMAInterface.io.DUUIAsynchronousProcessor;
+import org.texttechnologylab.DockerUnifiedUIMAInterface.io.DUUICollectionReader;
+import org.texttechnologylab.DockerUnifiedUIMAInterface.io.reader.DUUIFileReader;
 import org.texttechnologylab.DockerUnifiedUIMAInterface.lua.DUUILuaContext;
 import org.xml.sax.SAXException;
 
@@ -19,35 +17,56 @@ import java.net.URISyntaxException;
 import static org.apache.uima.fit.factory.AnalysisEngineFactory.createEngineDescription;
 
 public class TopicTransformer {
+    private static final String[] MODELS = {
+            "docker.texttechnologylab.org/duui-transformers-topic-manifestoberta-xlm-roberta:latest",
+            "docker.texttechnologylab.org/duui-transformers-topic-multilingual-iptc-media-topic-classifier:latest",
+            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-english-cap-v3:latest",
+            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-party-cap-v3:latest",
+            "docker.texttechnologylab.org/duui-transformers-topic-cardiffnlp-roberta-large-tweet-topic-single-all:latest",
+            "docker.texttechnologylab.org/duui-transformers-topic-tweet-topic-large-multilingual:latest"
+    };
 
     //private String modelUrl = "http://127.0.0.1:1001"; // Model server URL
 
-    // Constructor
-    public TopicTransformer() {
-    }
-
-    public void performTopicAnalysis(String text, String model, String outputFilePath) throws UIMAException, IOException, URISyntaxException {
-        DUUIComposer composer = new DUUIComposer().withSkipVerification(true)
-                .withLuaContext(new DUUILuaContext().withJsonLibrary());
-
-        try {
-            DUUIDockerDriver dockerDriver = new DUUIDockerDriver();
-            composer.addDriver(dockerDriver);
-
-        } catch(SAXException e){
-            e.printStackTrace();
+    public static void main(String[] args) {
+        if (args.length < 3) {
+            System.out.println("Usage: java TopicTransformer <inputFolderPath> <outputFolderPath> <numThreads>");
+            return;
         }
 
-        DUUIUIMADriver uimaDriver = new DUUIUIMADriver();
-        composer.addDriver(uimaDriver);
+        String inputFolderPath = args[0];
+        String outputFolderPath = args[1];
+        int numThreads = Integer.parseInt(args[2]);
 
+        for(String model : MODELS) {
+            run(inputFolderPath, outputFolderPath, model, numThreads);
+        }
 
-        //DUUIRemoteDriver remoteDriver = new DUUIRemoteDriver();
-        //composer.addDriver(remoteDriver);
+    }
 
-        JCas cas = JCasFactory.createJCas();
+    public static void run(String inputFolder, String outputFolder, String model, int numThreads)  {
+        DUUICollectionReader reader = new DUUIFileReader(inputFolder, ".txt");
+        DUUIAsynchronousProcessor pProcessor = new DUUIAsynchronousProcessor(reader);
+        new File(outputFolder).mkdir();
+
 
         try {
+            DUUIComposer composer = new DUUIComposer()
+                    .withSkipVerification(true)
+                    .withLuaContext(new DUUILuaContext().withJsonLibrary())
+                    .withWorkers(numThreads);
+            DUUIDockerDriver docker_driver = new DUUIDockerDriver();
+            DUUISwarmDriver swarm_driver = new DUUISwarmDriver();
+            DUUIUIMADriver uima_driver = new DUUIUIMADriver().withDebug(true);
+
+            composer.addDriver(docker_driver, uima_driver, swarm_driver);
+
+//            composer.add(
+//                    new DUUIRemoteDriver.Component("http://127.0.0.1:9714")
+//                            .withParameter("ddc_variant", "ddc2_dim100")
+//                            .withParameter("selection", "text")
+//            );
+
             composer.add(
                     new DUUIDockerDriver.Component(model)
                             //.withParameter("model_name", model)
@@ -56,37 +75,20 @@ public class TopicTransformer {
                             .withTargetView("output_" + model).build()
             );
 
-
-
             composer.add(new DUUIUIMADriver.Component(
                     createEngineDescription(XmiWriter.class,
-                            XmiWriter.PARAM_TARGET_LOCATION, outputFilePath,
+                            XmiWriter.PARAM_TARGET_LOCATION, outputFolder,
                             XmiWriter.PARAM_PRETTY_PRINT, true,
                             XmiWriter.PARAM_OVERWRITE, true,
                             XmiWriter.PARAM_VERSION, "1.1",
-                            XmiWriter.PARAM_COMPRESSION, "GZIP")));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+                            XmiWriter.PARAM_COMPRESSION, "GZIP"))
+                    .withScale(numThreads).build());
 
-//        CollectionReaderDescription reader = createReaderDescription(
-//                TextReader.class,
-//                TextReader.PARAM_SOURCE_LOCATION, "src/main/resources/documents",
-//                TextReader.PARAM_PATTERNS, "∗∗/∗.txt",
-//        TextReader.PARAM_LANGUAGE, "de"
-//);
+            composer.run((CollectionReaderDescription) pProcessor);
 
-
-        // Run the pipeline on the provided CAS
-        try {
-            cas.setDocumentLanguage("en");
-            cas.setDocumentText(text);
-            composer.run(cas);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
     }
-
-
 }
