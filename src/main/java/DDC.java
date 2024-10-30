@@ -74,7 +74,7 @@ public class DDC {
                             .withParameter("ddc_variant", "ddc2_dim100")
                             .withParameter("selection", "text")
                             .withSourceView("InitialView")
-                            .withTargetView("output_ddc")
+                            .withTargetView("ddc")
                             .withScale(numThreads).build());
 
             composer.add(new DUUIUIMADriver.Component(
