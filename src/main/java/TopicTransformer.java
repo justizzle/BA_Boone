@@ -20,14 +20,6 @@ import java.net.URISyntaxException;
 import static org.apache.uima.fit.factory.AnalysisEngineFactory.createEngineDescription;
 
 public class TopicTransformer {
-//    private static final String[] MODELS = {
-//            "docker.texttechnologylab.org/duui-transformers-topic-manifestoberta-xlm-roberta:latest",
-//            "docker.texttechnologylab.org/duui-transformers-topic-multilingual-iptc-media-topic-classifier:latest",
-//            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-english-cap-v3:latest",
-//            "docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-party-cap-v3:latest",
-//            "docker.texttechnologylab.org/duui-transformers-topic-cardiffnlp-roberta-large-tweet-topic-single-all:latest",
-//            "docker.texttechnologylab.org/duui-transformers-topic-tweet-topic-large-multilingual:latest"
-//    };
 
     //private String modelUrl = "http://127.0.0.1:1001"; // Model server URL
 
@@ -67,6 +59,13 @@ public class TopicTransformer {
 
             composer.addDriver(docker_driver, uima_driver, swarm_driver);
 
+            composer.add(
+                    new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-spacy-de_core_news_sm:latest")
+                            .withImageFetching()
+                            .withScale(numThreads)
+                            .withSourceView("InitialView")
+                            .withTargetView("InitialView").build());
+
 //            composer.add(
 //                    new DUUIRemoteDriver.Component("http://127.0.0.1:9714")
 //                            .withParameter("ddc_variant", "ddc2_dim100")
@@ -80,7 +79,7 @@ public class TopicTransformer {
             composer.add(
                     new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-manifestoberta-xlm-roberta:latest")
                             //.withParameter("model_name", model)
-                            .withParameter("selection", "text")
+                            .withParameter("selection", "de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence")
                             .withSourceView("InitialView")
                             .withSegmentationStrategy(segmentationStrategy)
                             .withScale(numThreads)
@@ -90,7 +89,7 @@ public class TopicTransformer {
             composer.add(
                     new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-multilingual-iptc-media-topic-classifier:latest")
                             //.withParameter("model_name", model)
-                            .withParameter("selection", "text")
+                            .withParameter("selection", "de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence")
                             .withSourceView("InitialView")
                             .withSegmentationStrategy(segmentationStrategy)
                             .withScale(numThreads)
@@ -100,7 +99,7 @@ public class TopicTransformer {
             composer.add(
                     new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-english-cap-v3:latest")
                             //.withParameter("model_name", model)
-                            .withParameter("selection", "text")
+                            .withParameter("selection", "de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence")
                             .withSourceView("InitialView")
                             .withSegmentationStrategy(segmentationStrategy)
                             .withScale(numThreads)
@@ -110,7 +109,7 @@ public class TopicTransformer {
             composer.add(
                     new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-xlm-roberta-large-party-cap-v3:latest")
                             //.withParameter("model_name", model)
-                            .withParameter("selection", "text")
+                            .withParameter("selection", "de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence")
                             .withSourceView("InitialView")
                             .withSegmentationStrategy(segmentationStrategy)
                             .withScale(numThreads)
@@ -120,7 +119,7 @@ public class TopicTransformer {
             composer.add(
                     new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-cardiffnlp-roberta-large-tweet-topic-single-all:latest")
                             //.withParameter("model_name", model)
-                            .withParameter("selection", "text")
+                            .withParameter("selection", "de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence")
                             .withSourceView("InitialView")
                             .withSegmentationStrategy(segmentationStrategy)
                             .withScale(numThreads)
@@ -130,7 +129,7 @@ public class TopicTransformer {
             composer.add(
                     new DUUIDockerDriver.Component("docker.texttechnologylab.org/duui-transformers-topic-tweet-topic-large-multilingual:latest")
                             //.withParameter("model_name", model)
-                            .withParameter("selection", "text")
+                            .withParameter("selection", "de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Sentence")
                             .withSourceView("InitialView")
                             .withSegmentationStrategy(segmentationStrategy)
                             .withScale(numThreads)
